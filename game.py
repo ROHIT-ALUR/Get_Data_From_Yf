@@ -1,308 +1,190 @@
-# Fixed version - Complete HTML content for Finance Shark Game
-# Copy-paste this entire code block to fix SyntaxError
+# Finance Shark Game for MSRUAS - FIXED Streamlit Version
+# Run: pip install streamlit pandas numpy openpyxl
+# Then: streamlit run this_file.py
 
-html_content = '''<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🦈 Finance Shark Game - MSRUAS Management Fest</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            min-height: 100vh; 
-            padding: 20px; 
-        }
-        .container { 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            background: white; 
-            border-radius: 20px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
-            overflow: hidden; 
-        }
-        header { 
-            background: linear-gradient(90deg, #ff6b6b, #feca57); 
-            color: white; 
-            padding: 30px; 
-            text-align: center; 
-        }
-        h1 { font-size: 2.5em; margin-bottom: 10px; }
-        .subtitle { font-size: 1.2em; opacity: 0.9; }
-        .game-area { padding: 40px; }
-        .mode-selector { text-align: center; margin-bottom: 40px; }
-        button { 
-            background: #4ecdc4; 
-            color: white; 
-            border: none; 
-            padding: 15px 30px; 
-            font-size: 1.1em; 
-            border-radius: 50px; 
-            cursor: pointer; 
-            transition: all 0.3s; 
-            margin: 0 10px; 
-        }
-        button:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-        button.active { background: #ff6b6b; }
-        .scenario-selector, .input-group { text-align: center; margin-bottom: 30px; }
-        select, input { 
-            padding: 12px; 
-            font-size: 1em; 
-            border-radius: 10px; 
-            border: 2px solid #ddd; 
-            width: 300px; 
-            max-width: 100%; 
-        }
-        .metrics-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
-            gap: 20px; 
-            margin: 30px 0; 
-        }
-        .metric-card { 
-            background: #f8f9fa; 
-            padding: 25px; 
-            border-radius: 15px; 
-            text-align: center; 
-            border-left: 5px solid #4ecdc4; 
-        }
-        .metric-value { 
-            font-size: 2.5em; 
-            font-weight: bold; 
-            color: #2c3e50; 
-            margin: 10px 0; 
-        }
-        .metric-label { color: #7f8c8d; font-size: 1.1em; }
-        .table-container { 
-            overflow-x: auto; 
-            margin: 20px 0; 
-            background: white; 
-            border-radius: 10px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
-        }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #34495e; color: white; font-weight: 600; }
-        tr:hover { background: #f8f9fa; }
-        .verdict { 
-            text-align: center; 
-            padding: 30px; 
-            margin: 30px 0; 
-            border-radius: 15px; 
-            font-size: 1.5em; 
-            font-weight: bold; 
-        }
-        .win { 
-            background: #d4edda; 
-            color: #155724; 
-            border: 3px solid #c3e6cb; 
-            animation: celebrate 0.5s infinite alternate; 
-        }
-        .lose { 
-            background: #f8d7da; 
-            color: #721c24; 
-            border: 3px solid #f5c6cb; 
-        }
-        @keyframes celebrate { 
-            0% { transform: scale(1); } 
-            100% { transform: scale(1.05); } 
-        }
-        .excel-section { 
-            background: #e8f4fd; 
-            padding: 40px; 
-            border-radius: 15px; 
-            text-align: center; 
-            margin-top: 40px; 
-        }
-        .download-btn { 
-            background: #007bff; 
-            color: white; 
-            padding: 20px 40px; 
-            font-size: 1.3em; 
-            border-radius: 50px; 
-            text-decoration: none; 
-            display: inline-block; 
-            margin-top: 20px; 
-        }
-        .rules { 
-            background: #fff3cd; 
-            padding: 20px; 
-            border-radius: 10px; 
-            margin-top: 30px; 
-            font-size: 0.95em; 
-        }
-        .hidden { display: none; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>🦈 Finance Shark Game</h1>
-            <p class="subtitle">MSRUAS Management Fest | Shark Tank India Business Analysis Game</p>
-        </header>
-        
-        <div class="game-area">
-            <div class="mode-selector">
-                <button onclick="setMode('game')" class="active">🎮 Play Game</button>
-                <button onclick="setMode('excel')">📊 Get Excel</button>
-            </div>
-            
-            <div id="game-section">
-                <div class="scenario-selector">
-                    <label>Choose Startup:</label><br>
-                    <select id="scenario" onchange="loadData()">
-                        <option value="tech">Tech Startup (Meesho style)</option>
-                        <option value="food">Food Delivery (Swiggy style)</option>
-                    </select>
-                </div>
-                
-                <div class="input-group">
-                    <label>Discount Rate (%):</label>
-                    <input type="number" id="rate" value="10" min="1" max="30" step="0.1" onchange="calculate()">
-                </div>
-                
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-value" id="npv">₹0</div>
-                        <div class="metric-label">NPV</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="current">0.00</div>
-                        <div class="metric-label">Current Ratio</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="de">0.00</div>
-                        <div class="metric-label">Debt/Equity</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="roa">0%</div>
-                        <div class="metric-label">ROA</div>
-                    </div>
-                </div>
-                
-                <div class="table-container">
-                    <table>
-                        <tr><th>Cash Flows (₹ Lakhs)</th><th>Year</th><th>Amount</th><th>Discounted</th></tr>
-                        <tbody id="cf-table"></tbody>
-                    </table>
-                </div>
-                
-                <table class="table-container">
-                    <tr><th>Balance Sheet Y3 (₹ Lakhs)</th><th>Items</th><th>Amount</th></tr>
-                    <tbody id="bs-table"></tbody>
-                </table>
-                
-                <div class="verdict" id="verdict">
-                    <strong>Win Conditions:</strong><br>
-                    Current Ratio > 1.5 ✅<br>
-                    Debt/Equity < 1 ✅<br>
-                    ROA > 15% ✅<br>
-                    Get 3/3 for ₹1 Crore deal!
-                </div>
-            </div>
-            
-            <div id="excel-section" class="hidden excel-section">
-                <h2>📥 Download Excel Template</h2>
-                <p>Offline game with auto-calculating formulas!</p>
-                <div class="rules">
-                    <strong>How to use:</strong><br>
-                    - Edit cash flows/rates<br>
-                    - Formulas update NPV & ratios<br>
-                    - Team competition ready!
-                </div>
-                <p><em>Excel generation requires Python openpyxl library</em></p>
-            </div>
-        </div>
-    </div>
+import streamlit as st
+import pandas as pd
+import numpy as np
+import openpyxl
+from openpyxl import Workbook
+from openpyxl.styles import Font
+import io
 
-    <script>
-        const data = {
-            tech: {
-                cf: [-5000,1000,2000,3500,5000,7000],
-                assets: {cash:1500, inv:2000, total:8500},
-                liab: {debt:3000, equity:5500},
-                profit: 1200
-            },
-            food: {
-                cf: [-10000,2000,3000,4500,6000,8000],
-                assets: {cash:2500, inv:3500, total:12000},
-                liab: {debt:5000, equity:7000},
-                profit: 1800
-            }
-        };
-        
-        let currentData = data.tech;
-        
-        function setMode(mode) {
-            document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById('game-section').classList.toggle('hidden', mode === 'excel');
-            document.getElementById('excel-section').classList.toggle('hidden', mode === 'game');
-        }
-        
-        function npv(rate, cfs) {
-            return cfs.reduce((sum, cf, t) => sum + cf / Math.pow(1 + rate/100, t), 0);
-        }
-        
-        function loadData() {
-            currentData = data[document.getElementById('scenario').value];
-            calculate();
-        }
-        
-        function calculate() {
-            const rate = parseFloat(document.getElementById('rate').value);
-            
-            // NPV
-            const npvv = npv(rate, currentData.cf);
-            document.getElementById('npv').textContent = '₹' + Math.round(npvv).toLocaleString();
-            
-            // Ratios
-            const cr = currentData.assets.cash / currentData.liab.debt;
-            const de = currentData.liab.debt / currentData.liab.equity;
-            const roaa = (currentData.profit / currentData.assets.total) * 100;
-            
-            document.getElementById('current').textContent = cr.toFixed(2);
-            document.getElementById('de').textContent = de.toFixed(2);
-            document.getElementById('roa').textContent = roaa.toFixed(1) + '%';
-            
-            // Tables
-            const years = ['Y0','Y1','Y2','Y3','Y4','Y5'];
-            let cfhtml = currentData.cf.map((cf,i) => 
-                `<tr><td>${years[i]}</td><td>${cf}</td><td>${Math.round(cf/Math.pow(1+rate/100,i))}</td></tr>`
-            ).join('');
-            document.getElementById('cf-table').innerHTML = cfhtml;
-            
-            let bsh = `
-                <tr><td>Cash</td><td>${currentData.assets.cash}</td></tr>
-                <tr><td>Inventory</td><td>${currentData.assets.inv}</td></tr>
-                <tr><td><strong>Total Assets</strong></td><td><strong>${currentData.assets.total}</strong></td></tr>
-                <tr><td>Debt</td><td>${currentData.liab.debt}</td></tr>
-                <tr><td>Equity</td><td>${currentData.liab.equity}</td></tr>
-            `;
-            document.getElementById('bs-table').innerHTML = bsh;
-            
-            // Verdict
-            const v = document.getElementById('verdict');
-            if (cr > 1.5 && de < 1 && roaa > 15) {
-                v.className = 'verdict win';
-                v.innerHTML = '🏆 <strong>DEAL! ₹1 Crore from Sharks! 🎉</strong>';
-            } else {
-                v.className = 'verdict lose';
-                v.innerHTML = '<strong>Out! Fix your numbers! 💸</strong>';
-            }
-        }
-        calculate();
-    </script>
-</body>
-</html>'''
+# Page config
+st.set_page_config(
+    page_title="Finance Shark Game - MSRUAS",
+    page_icon="🦈",
+    layout="wide"
+)
 
-# Complete working script
-with open('finance_shark_game.html', 'w') as f:
-    f.write(html_content)
+# Custom CSS
+st.markdown("""
+<style>
+    .main-header {font-size: 3rem; color: #ff6b6b; text-align: center; margin-bottom: 1rem;}
+    .shark-win {background-color: #d4edda; padding: 2rem; border-radius: 1rem; border: 3px solid #28a745;}
+    .shark-lose {background-color: #f8d7da; padding: 2rem; border-radius: 1rem; border: 3px solid #dc3545;}
+    .metric-card {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 1rem; text-align: center;}
+</style>
+""", unsafe_allow_html=True)
 
-print("✅ Fixed! finance_shark_game.html created successfully!")
-print("📱 Open in browser - fully working game!")
-print("🎮 Cash flows, NPV, Balance Sheet, Ratios + Shark verdict!")
-with open('finance_shark_game.html', 'w') as f: f.write(html_content)
+# Title
+st.markdown('<h1 class="main-header">🦈 Finance Shark Game</h1>', unsafe_allow_html=True)
+st.markdown("**MSRUAS Management Fest | Shark Tank India Business Analysis Game**")
+
+# Game Data
+@st.cache_data
+def load_scenarios():
+    return {
+        "Tech Startup (Meesho style)": {
+            "cashflows": [-5000000, 1000000, 2000000, 3500000, 5000000, 7000000],
+            "assets": {"cash": 1500000, "inventory": 2000000, "total": 8500000},
+            "liabilities": {"debt": 3000000, "equity": 5500000},
+            "net_profit": 1200000
+        },
+        "Food Delivery (Swiggy style)": {
+            "cashflows": [-10000000, 2000000, 3000000, 4500000, 6000000, 8000000],
+            "assets": {"cash": 2500000, "inventory": 3500000, "total": 12000000},
+            "liabilities": {"debt": 5000000, "equity": 7000000},
+            "net_profit": 1800000
+        }
+    }
+
+scenarios = load_scenarios()
+
+# Sidebar
+st.sidebar.title("🎮 Game Controls")
+game_mode = st.sidebar.selectbox("Select Mode:", ["Play Game", "Excel Template"], index=0)
+
+if game_mode == "Play Game":
+    # Main Game Area
+    st.header("📈 Analyze Startup Financials")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        scenario_name = st.selectbox("Choose Startup:", list(scenarios.keys()))
+        data = scenarios[scenario_name]
+        
+        # Discount Rate
+        discount_rate = st.slider("Discount Rate (%)", 5.0, 25.0, 10.0) / 100
+        
+        # Cash Flows Table
+        years = ["Y0 (Invest)", "Y1", "Y2", "Y3", "Y4", "Y5"]
+        cf_df = pd.DataFrame({
+            "Year": years,
+            "Cash Flow (₹)": [f"₹{x:,}" for x in data["cashflows"]],
+            "Discounted CF": [f"₹{x/(1+discount_rate)**i:,.0f}" for i, x in enumerate(data["cashflows"])]
+        })
+        st.subheader("💰 Cash Flow Analysis")
+        st.dataframe(cf_df, use_container_width=True)
+        
+        # NPV Calculation
+        npv_value = np.npv(discount_rate, data["cashflows"])
+        st.metric("NPV", f"₹{npv_value:,.0f}", delta=None)
+    
+    with col2:
+        # Balance Sheet
+        st.subheader("📊 Balance Sheet (Year 3)")
+        bs_data = {
+            "Items": ["Cash", "Inventory", "Total Assets", "Debt", "Equity"],
+            "Amount (₹)": [
+                f"₹{data['assets']['cash']:,}",
+                f"₹{data['assets']['inventory']:,}", 
+                f"₹{data['assets']['total']:,}",
+                f"₹{data['liabilities']['debt']:,}",
+                f"₹{data['liabilities']['equity']:,}"
+            ]
+        }
+        st.dataframe(pd.DataFrame(bs_data), use_container_width=True)
+    
+    # Key Ratios
+    st.subheader("🔢 Financial Ratios")
+    col1, col2, col3 = st.columns(3)
+    
+    current_ratio = data["assets"]["cash"] / data["liabilities"]["debt"]
+    debt_equity = data["liabilities"]["debt"] / data["liabilities"]["equity"]
+    roa = (data["net_profit"] / data["assets"]["total"]) * 100
+    
+    with col1:
+        st.metric("Current Ratio", f"{current_ratio:.2f}", "Target: >1.5")
+    with col2:
+        st.st.metric("Debt/Equity", f"{debt_equity:.2f}", "Target: <1.0")
+    with col3:
+        st.metric("ROA", f"{roa:.1f}%", "Target: >15%")
+    
+    # Shark Verdict
+    st.subheader("🦈 Shark Verdict")
+    if current_ratio > 1.5 and debt_equity < 1.0 and roa > 15:
+        st.markdown('<div class="shark-win"><h2>🏆 DEAL CLOSED! ₹1 Crore Investment! 🎉</h2></div>', unsafe_allow_html=True)
+        st.balloons()
+    else:
+        st.markdown('<div class="shark-lose"><h3>💸 OUT! Improve your financials!</h3></div>', unsafe_allow_html=True)
+        
+        st.info("💡 **Tips to Win:**\n- Increase cash reserves\n- Reduce debt levels\n- Boost profitability")
+
+elif game_mode == "Excel Template":
+    st.header("📥 Download Excel Template")
+    
+    # Create Excel workbook
+    wb = Workbook()
+    ws_cf = wb.active
+    ws_cf.title = "Cash Flows"
+    
+    # Cash Flow Sheet
+    ws_cf['A1'] = "🦈 Finance Shark Game - MSRUAS"
+    ws_cf['A1'].font = Font(bold=True, size=16)
+    
+    ws_cf['A3'] = "Discount Rate (%)"
+    ws_cf['B3'] = 10
+    
+    headers = ["Year", "Cash Flow", "Discounted CF"]
+    for col, header in enumerate(headers, 1):
+        ws_cf.cell(row=5, column=col, value=header).font = Font(bold=True)
+    
+    sample_cf = [-5000000, 1000000, 2000000, 3500000, 5000000, 7000000]
+    years = ["Y0 (Invest)", "Y1", "Y2", "Y3", "Y4", "Y5"]
+    
+    for i, (year, cf) in enumerate(zip(years, sample_cf)):
+        ws_cf[f'A{7+i}'] = year
+        ws_cf[f'B{7+i}'] = cf
+        ws_cf[f'C{7+i}'] = f"=B{7+i}/(1+$B$3/100)^{i}"
+    
+    ws_cf['A16'] = "NPV"
+    ws_cf['C16'] = "=SUM(C7:C12)"
+    
+    # Balance Sheet Sheet
+    ws_bs = wb.create_sheet("Balance Sheet")
+    ws_bs['A1'] = "Balance Sheet Analysis"
+    ws_bs['A1'].font = Font(bold=True, size=16)
+    
+    bs_items = ["Cash", "Inventory", "Total Assets", "Debt", "Equity"]
+    bs_values = [1500000, 2000000, "=SUM(B2:B3)+3500000", 3000000, 5500000]
+    
+    for i, (item, val) in enumerate(zip(bs_items, bs_values), 2):
+        ws_bs[f'A{i}'] = item
+        ws_bs[f'B{i}'] = val
+    
+    # Ratios
+    ws_bs['D1'] = "Ratios"
+    ws_bs['D2'] = "Current Ratio"
+    ws_bs['E2'] = "=B2/B5"
+    ws_bs['D3'] = "Debt/Equity"
+    ws_bs['E3'] = "=B5/B6"
+    ws_bs['D4'] = "ROA %"
+    ws_bs['E4'] = "=1200000/B4*100"
+    
+    # Save to bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    st.download_button(
+        label="📊 Download Financial Game Excel Template",
+        data=output.getvalue(),
+        file_name="finance_shark_game.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+# Footer
+st.markdown("---")
+st.markdown("*MSRUAS Management Fest 2026 | Theme: TV Series Business Analysis*")
