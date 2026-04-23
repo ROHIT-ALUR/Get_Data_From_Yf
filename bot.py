@@ -7,7 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/18RwehV4inQpnc8l0zD-_XVbe4WeEYRBv
 """
 
-!pip install streamlit pandas plotly google-generativeai
 import streamlit as st
 import pandas as pd
 import plotly.express as px
