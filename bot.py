@@ -26,11 +26,11 @@ else:
 # Configure the AI model if the key exists
 if API_KEY:
     genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # UPDATE: Using the latest available model here!
+    model = genai.GenerativeModel('gemini-2.5-flash')
 else:
     model = None
     st.error("⚠️ API Key not found! Please check your Streamlit Cloud Secrets.")
-
 # ==========================================
 # 2. Data & System Prompt
 # ==========================================
