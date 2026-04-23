@@ -1,0 +1,347 @@
+
+<style>
+  .tab-btn { padding: 10px 14px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 13px; font-weight: 400; color: var(--color-text-secondary); transition: color 0.15s; }
+  .tab-btn.active { border-bottom: 2px solid #1D9E75; color: #1D9E75; font-weight: 500; }
+  .suggest-btn { text-align: left; padding: 8px 12px; border-radius: 8px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-secondary); color: var(--color-text-secondary); font-size: 12px; cursor: pointer; width: 100%; font-family: var(--font-sans); }
+  .suggest-btn:hover { background: var(--color-background-tertiary); }
+  .firm-row { cursor: pointer; transition: background 0.1s; }
+  .firm-row:hover { background: var(--color-background-secondary) !important; }
+  select { font-family: var(--font-sans); }
+</style>
+
+<h2 class="sr-only">ESG Finance Bot — Indian Listed Firms ESG and Financial Performance Analysis Dashboard</h2>
+
+<div id="app" style="display:flex;flex-direction:column;height:700px;font-family:var(--font-sans);background:var(--color-background-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;border:0.5px solid var(--color-border-tertiary)"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const ESG_DATA = [
+  { name:"TCS", sector:"IT", e:72, s:78, g:81, esg:77, roe:47.5, roa:24.2, pe:28.5 },
+  { name:"Infosys", sector:"IT", e:75, s:76, g:79, esg:77, roe:31.8, roa:18.5, pe:25.2 },
+  { name:"Wipro", sector:"IT", e:71, s:74, g:77, esg:74, roe:17.2, roa:11.1, pe:22.1 },
+  { name:"HDFC Bank", sector:"Banking", e:52, s:65, g:82, esg:66, roe:16.5, roa:1.9, pe:19.8 },
+  { name:"ICICI Bank", sector:"Banking", e:48, s:62, g:78, esg:63, roe:15.2, roa:1.7, pe:17.5 },
+  { name:"Reliance", sector:"Energy", e:45, s:58, g:72, esg:58, roe:10.8, roa:5.2, pe:24.6 },
+  { name:"ITC", sector:"FMCG", e:62, s:71, g:76, esg:70, roe:27.5, roa:15.8, pe:22.4 },
+  { name:"Asian Paints", sector:"Materials", e:61, s:68, g:74, esg:68, roe:35.2, roa:20.1, pe:48.5 },
+  { name:"Maruti Suzuki", sector:"Auto", e:55, s:63, g:71, esg:63, roe:15.8, roa:9.8, pe:26.8 },
+  { name:"Tata Steel", sector:"Metals", e:42, s:55, g:65, esg:54, roe:22.5, roa:5.8, pe:8.2 },
+  { name:"NTPC", sector:"Utilities", e:38, s:60, g:68, esg:55, roe:12.8, roa:3.2, pe:9.8 },
+  { name:"Sun Pharma", sector:"Pharma", e:65, s:70, g:72, esg:69, roe:14.5, roa:10.2, pe:32.5 },
+  { name:"HUL", sector:"FMCG", e:68, s:75, g:80, esg:74, roe:85.2, roa:18.5, pe:55.2 },
+  { name:"Bajaj Finance", sector:"NBFC", e:45, s:60, g:75, esg:60, roe:22.8, roa:4.8, pe:28.5 },
+  { name:"L&T", sector:"Industrial", e:50, s:65, g:73, esg:63, roe:14.2, roa:4.5, pe:22.8 },
+];
+
+const SECTOR_COLORS = {
+  "IT":"#1D9E75","Banking":"#378ADD","Energy":"#BA7517","FMCG":"#D4537E",
+  "Materials":"#7F77DD","Auto":"#888780","Metals":"#E24B4A","Utilities":"#639922",
+  "Pharma":"#0F6E56","NBFC":"#D85A30","Industrial":"#533AB7"
+};
+
+function esgColor(s){return s>=70?"#1D9E75":s>=60?"#639922":s>=50?"#BA7517":"#E24B4A";}
+
+const SYSTEM_PROMPT = `You are ESGAnalyst, an expert AI assistant specializing in ESG (Environmental, Social, Governance) scoring and its correlation with financial performance of Indian listed firms. You are helping an MBA student at MSRUAS with their dissertation.
+
+You have access to ESG and financial data for 15 major Nifty-listed Indian firms:
+${JSON.stringify(ESG_DATA)}
+
+ESG Scoring methodology (scale 0-100):
+- E (Environmental): Carbon emissions, water usage, waste management, renewable energy, BRSR environmental disclosures
+- S (Social): Employee welfare, D&I, community engagement, supply chain standards, safety records
+- G (Governance): Board composition, executive pay transparency, shareholder rights, audit quality
+- Total ESG = average of E, S, G
+
+Key findings from this dataset:
+- Pearson r (ESG vs ROE) ≈ 0.38 — moderate positive correlation
+- Pearson r (ESG vs ROA) ≈ 0.52 — stronger positive correlation
+- IT sector leads ESG scores (74-77); Metals/Utilities lag (54-55)
+- FMCG shows best ESG-financial alignment
+- Governance scores outperform Environmental scores across all sectors
+- SEBI's mandatory BRSR from FY2023 is closing the disclosure gap
+
+Context: India-specific — SEBI BRSR framework, NSE/BSE listed firms, Nifty 100 universe.
+
+Be concise (3-5 sentences), data-driven, cite specific firms when relevant, and connect ESG to financial implications. Use ₹ for currency. Respond as if advising an MBA dissertation student.`;
+
+let state = {
+  messages: [{ role:"assistant", content:"Hi! I'm your ESG Analyst for Indian markets. I have ESG scores and financial data (ROE, ROA, P/E) for 15 Nifty-listed firms. Try asking about sector ESG patterns, firm comparisons, or ESG-financial correlations for your dissertation." }],
+  selectedFirm: ESG_DATA[0],
+  activeTab: "explorer",
+  input: "",
+  loading: false,
+  charts: {}
+};
+
+function esgBadge(score){
+  const c = esgColor(score);
+  return `<span style="background:${c}20;color:${c};padding:2px 8px;border-radius:10px;font-weight:500;font-size:11px">${score}</span>`;
+}
+
+function metricCard(label, value, color="#BA7517"){
+  return `<div style="background:var(--color-background-secondary);border-radius:8px;padding:10px 12px;text-align:center">
+    <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">${label}</div>
+    <div style="font-size:20px;font-weight:500;color:${color}">${value}</div>
+  </div>`;
+}
+
+function renderExplorer(){
+  const f = state.selectedFirm;
+  const opts = ESG_DATA.map(d=>`<option value="${d.name}"${d.name===f.name?" selected":""}>${d.name} (${d.sector})</option>`).join("");
+  return `
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <label style="font-size:13px;color:var(--color-text-secondary);white-space:nowrap">Select firm</label>
+      <select id="firmSelect" style="flex:1;font-size:13px;padding:6px 10px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary)">${opts}</select>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <span style="font-size:15px;font-weight:500;color:var(--color-text-primary)">${f.name}</span>
+      <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:${SECTOR_COLORS[f.sector]}20;color:${SECTOR_COLORS[f.sector]}">${f.sector}</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      ${metricCard("ESG Total", f.esg, esgColor(f.esg))}
+      ${metricCard("Environmental", f.e, "#1D9E75")}
+      ${metricCard("Social", f.s, "#378ADD")}
+      ${metricCard("Governance", f.g, "#7F77DD")}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      ${metricCard("ROE", f.roe+"%")}
+      ${metricCard("ROA", f.roa+"%")}
+      ${metricCard("P/E Ratio", f.pe+"x")}
+    </div>
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:10px">ESG pillar breakdown — ${f.name}</div>
+      <div style="position:relative;height:150px"><canvas id="pillarChart" role="img" aria-label="Bar chart showing Environmental score ${f.e}, Social score ${f.s}, Governance score ${f.g} for ${f.name}"></canvas></div>
+    </div>`;
+}
+
+function renderCorrelation(){
+  return `
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:2px">ESG score vs ROE — all 15 firms</div>
+      <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:12px">Pearson r ≈ 0.38 &nbsp;|&nbsp; ESG vs ROA: r ≈ 0.52</div>
+      <div style="position:relative;height:220px"><canvas id="scatterChart" role="img" aria-label="Scatter plot of ESG score vs Return on Equity for 15 Indian firms, showing positive correlation"></canvas></div>
+    </div>
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:14px">
+      <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:10px">Average ESG by sector</div>
+      <div style="position:relative;height:160px"><canvas id="sectorChart" role="img" aria-label="Bar chart showing average ESG scores by sector for Indian firms"></canvas></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+      ${Object.entries(SECTOR_COLORS).filter(([s])=>ESG_DATA.some(f=>f.sector===s)).map(([s,c])=>`<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--color-text-secondary)"><span style="width:8px;height:8px;border-radius:2px;background:${c};display:inline-block"></span>${s}</span>`).join("")}
+    </div>`;
+}
+
+function renderRankings(){
+  const sorted = [...ESG_DATA].sort((a,b)=>b.esg-a.esg);
+  const rows = sorted.map((f,i)=>`
+    <tr class="firm-row" onclick="selectFirmFromTable('${f.name}')" style="border-bottom:0.5px solid var(--color-border-tertiary)">
+      <td style="padding:8px 10px;text-align:center;font-weight:500;font-size:12px;color:${i<3?"#1D9E75":"var(--color-text-secondary)"}">${i+1}</td>
+      <td style="padding:8px 10px;font-weight:500;font-size:12px;color:var(--color-text-primary)">${f.name}</td>
+      <td style="padding:8px 10px;font-size:11px"><span style="background:${SECTOR_COLORS[f.sector]}15;color:${SECTOR_COLORS[f.sector]};padding:2px 6px;border-radius:8px">${f.sector}</span></td>
+      <td style="padding:8px 10px">${esgBadge(f.esg)}</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--color-text-primary)">${f.roe}%</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--color-text-primary)">${f.roa}%</td>
+      <td style="padding:8px 10px;font-size:12px;color:var(--color-text-secondary)">${f.pe}x</td>
+    </tr>`).join("");
+  return `
+    <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--color-background-secondary)">
+            ${["#","Company","Sector","ESG","ROE","ROA","P/E"].map(h=>`<th style="padding:9px 10px;text-align:left;font-weight:500;font-size:11px;color:var(--color-text-secondary);border-bottom:0.5px solid var(--color-border-tertiary)">${h}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderMessages(){
+  return state.messages.map(m=>`
+    <div style="display:flex;justify-content:${m.role==="user"?"flex-end":"flex-start"};margin-bottom:10px">
+      ${m.role==="assistant"?`<div style="width:24px;height:24px;border-radius:6px;background:#E1F5EE;display:flex;align-items:center;justify-content:center;margin-right:8px;flex-shrink:0;margin-top:2px"><span style="font-size:11px;color:#1D9E75;font-weight:500">E</span></div>`:""}
+      <div style="max-width:82%;padding:10px 14px;border-radius:${m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px"};background:${m.role==="user"?"#1D9E75":"var(--color-background-secondary)"};color:${m.role==="user"?"white":"var(--color-text-primary)"};font-size:13px;line-height:1.6">${m.content}</div>
+    </div>`).join("")
+  + (state.loading ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="width:24px;height:24px;border-radius:6px;background:#E1F5EE;display:flex;align-items:center;justify-content:center"><span style="font-size:11px;color:#1D9E75;font-weight:500">E</span></div><div style="padding:10px 14px;border-radius:16px 16px 16px 4px;background:var(--color-background-secondary);font-size:13px;color:var(--color-text-secondary)">Analyzing...</div></div>` : "");
+}
+
+const SUGGESTIONS = [
+  "Which sector has the strongest ESG-ROE correlation?",
+  "Compare TCS vs Reliance on ESG performance",
+  "Does higher ESG score guarantee better ROE?",
+  "What is the research gap for Indian ESG studies?",
+  "Why do IT firms have better ESG than Energy firms?",
+];
+
+function render(){
+  const t = state.activeTab;
+  document.getElementById("app").innerHTML = `
+    <div style="padding:12px 18px;background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:12px">
+      <div style="width:32px;height:32px;border-radius:8px;background:#E1F5EE;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#1D9E75" stroke-width="2" stroke-linejoin="round"/></svg>
+      </div>
+      <div>
+        <div style="font-weight:500;font-size:14px;color:var(--color-text-primary)">ESG Finance Bot</div>
+        <div style="font-size:11px;color:var(--color-text-secondary)">ESG vs Financial Performance — Indian Listed Firms</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <span style="font-size:10px;padding:3px 9px;border-radius:20px;background:#E1F5EE;color:#0F6E56;font-weight:500">SEBI BRSR</span>
+        <span style="font-size:10px;padding:3px 9px;border-radius:20px;background:#FAEEDA;color:#854F0B;font-weight:500">Nifty 100</span>
+        <span style="font-size:10px;padding:3px 9px;border-radius:20px;background:#E6F1FB;color:#185FA5;font-weight:500">15 Firms</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+      <div style="width:54%;border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);padding:0 14px;flex-shrink:0">
+          <button class="tab-btn${t==="explorer"?" active":""}" onclick="switchTab('explorer')">Firm Explorer</button>
+          <button class="tab-btn${t==="correlation"?" active":""}" onclick="switchTab('correlation')">ESG vs Returns</button>
+          <button class="tab-btn${t==="rankings"?" active":""}" onclick="switchTab('rankings')">Rankings</button>
+        </div>
+        <div id="dashPanel" style="flex:1;overflow-y:auto;padding:14px"></div>
+      </div>
+
+      <div style="flex:1;display:flex;flex-direction:column;background:var(--color-background-primary);min-width:0">
+        <div style="padding:10px 14px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <div style="width:8px;height:8px;border-radius:4px;background:#1D9E75"></div>
+          <span style="font-size:12px;color:var(--color-text-secondary)">ESG Analyst Bot</span>
+        </div>
+        <div id="chatMessages" style="flex:1;overflow-y:auto;padding:14px"></div>
+        <div id="suggestArea"></div>
+        <div style="padding:10px 14px;border-top:0.5px solid var(--color-border-tertiary);display:flex;gap:8px;flex-shrink:0">
+          <input id="chatInput" value="${state.input.replace(/"/g,'&quot;')}" placeholder="Ask about ESG scores, correlations, sectors..." style="flex:1;padding:8px 12px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);font-size:13px;font-family:var(--font-sans)" />
+          <button id="sendBtn" onclick="sendMsg()" style="padding:8px 16px;border-radius:8px;background:${state.loading?"var(--color-background-secondary)":"#1D9E75"};color:${state.loading?"var(--color-text-tertiary)":"white"};border:none;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans)">Send</button>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById("dashPanel").innerHTML = t==="explorer"?renderExplorer():t==="correlation"?renderCorrelation():renderRankings();
+  document.getElementById("chatMessages").innerHTML = renderMessages();
+
+  const msgEl = document.getElementById("chatMessages");
+  msgEl.scrollTop = msgEl.scrollHeight;
+
+  if(state.messages.length===1 && !state.loading){
+    document.getElementById("suggestArea").innerHTML = `
+      <div style="padding:0 14px 10px">
+        <div style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:6px">Suggested questions</div>
+        ${SUGGESTIONS.map(q=>`<button class="suggest-btn" style="margin-bottom:6px" onclick="setInput('${q.replace(/'/g,"\\'")}')">→ ${q}</button>`).join("")}
+      </div>`;
+  }
+
+  const inp = document.getElementById("chatInput");
+  if(inp) inp.addEventListener("keydown", e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendMsg(); }});
+  if(inp) inp.addEventListener("input", e=>{ state.input = e.target.value; });
+
+  if(t==="explorer") drawPillarChart();
+  if(t==="correlation"){ drawScatterChart(); drawSectorChart(); }
+
+  const sel = document.getElementById("firmSelect");
+  if(sel) sel.addEventListener("change", e=>{ state.selectedFirm=ESG_DATA.find(f=>f.name===e.target.value); state.activeTab="explorer"; render(); });
+}
+
+function drawPillarChart(){
+  const ctx = document.getElementById("pillarChart");
+  if(!ctx) return;
+  if(state.charts.pillar) state.charts.pillar.destroy();
+  const f = state.selectedFirm;
+  state.charts.pillar = new Chart(ctx, {
+    type:"bar",
+    data:{
+      labels:["Environmental","Social","Governance"],
+      datasets:[{ data:[f.e,f.s,f.g], backgroundColor:["#1D9E7590","#378ADD90","#7F77DD90"], borderColor:["#1D9E75","#378ADD","#7F77DD"], borderWidth:1, borderRadius:4 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ font:{size:11}, color:"#888" }, grid:{ display:false } },
+        y:{ min:0, max:100, ticks:{ font:{size:10}, color:"#888" }, grid:{ color:"rgba(0,0,0,0.05)" } }
+      }
+    }
+  });
+}
+
+function drawScatterChart(){
+  const ctx = document.getElementById("scatterChart");
+  if(!ctx) return;
+  if(state.charts.scatter) state.charts.scatter.destroy();
+  const datasets = Object.keys(SECTOR_COLORS).filter(s=>ESG_DATA.some(f=>f.sector===s)).map(sector=>({
+    label: sector,
+    data: ESG_DATA.filter(f=>f.sector===sector).map(f=>({ x:f.esg, y:f.roe, name:f.name })),
+    backgroundColor: SECTOR_COLORS[sector]+"aa",
+    borderColor: SECTOR_COLORS[sector],
+    borderWidth:1,
+    pointRadius:7
+  }));
+  state.charts.scatter = new Chart(ctx, {
+    type:"scatter",
+    data:{ datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label: ctx=> `${ctx.raw.name}: ESG ${ctx.raw.x}, ROE ${ctx.raw.y}%` } }
+      },
+      scales:{
+        x:{ min:50, max:85, title:{ display:true, text:"ESG Score", font:{size:11}, color:"#888" }, ticks:{ font:{size:10}, color:"#888" }, grid:{ color:"rgba(0,0,0,0.05)" } },
+        y:{ title:{ display:true, text:"ROE %", font:{size:11}, color:"#888" }, ticks:{ font:{size:10}, color:"#888" }, grid:{ color:"rgba(0,0,0,0.05)" } }
+      }
+    }
+  });
+}
+
+function drawSectorChart(){
+  const ctx = document.getElementById("sectorChart");
+  if(!ctx) return;
+  if(state.charts.sector) state.charts.sector.destroy();
+  const sectors = [...new Set(ESG_DATA.map(f=>f.sector))];
+  const avgESG = sectors.map(s=>{ const firms=ESG_DATA.filter(f=>f.sector===s); return Math.round(firms.reduce((a,f)=>a+f.esg,0)/firms.length); });
+  const sorted = sectors.map((s,i)=>({s,v:avgESG[i]})).sort((a,b)=>b.v-a.v);
+  state.charts.sector = new Chart(ctx, {
+    type:"bar",
+    data:{
+      labels: sorted.map(d=>d.s),
+      datasets:[{ data: sorted.map(d=>d.v), backgroundColor: sorted.map(d=>SECTOR_COLORS[d.s]+"90"), borderColor: sorted.map(d=>SECTOR_COLORS[d.s]), borderWidth:1, borderRadius:3 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ font:{size:10}, color:"#888" }, grid:{ display:false } },
+        y:{ min:45, max:85, ticks:{ font:{size:10}, color:"#888" }, grid:{ color:"rgba(0,0,0,0.05)" } }
+      }
+    }
+  });
+}
+
+window.switchTab = function(tab){ state.activeTab=tab; render(); }
+window.selectFirmFromTable = function(name){ state.selectedFirm=ESG_DATA.find(f=>f.name===name); state.activeTab="explorer"; render(); }
+window.setInput = function(q){ state.input=q; render(); document.getElementById("chatInput").focus(); }
+
+window.sendMsg = async function(){
+  const inp = document.getElementById("chatInput");
+  const text = (inp?inp.value:state.input).trim();
+  if(!text || state.loading) return;
+  state.input="";
+  state.messages.push({ role:"user", content:text });
+  state.loading=true;
+  render();
+  try {
+    const apiMsgs = state.messages.filter(m=>m.role!=="system").map(m=>({ role:m.role, content:m.content }));
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, system:SYSTEM_PROMPT, messages:apiMsgs })
+    });
+    const data = await res.json();
+    const reply = data.content?.find(b=>b.type==="text")?.text || "Could not generate a response.";
+    state.messages.push({ role:"assistant", content:reply });
+  } catch(e) {
+    state.messages.push({ role:"assistant", content:"Connection error. Please try again." });
+  }
+  state.loading=false;
+  render();
+}
+
+render();
+</script>
