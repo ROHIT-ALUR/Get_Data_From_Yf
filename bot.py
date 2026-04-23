@@ -12,21 +12,23 @@ import pandas as pd
 import plotly.express as px
 import google.generativeai as genai
 import os
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import google.generativeai as genai
+import os
 
 # ==========================================
 # 1. Configuration & Setup
 # ==========================================
 st.set_page_config(page_title="ESG Finance Bot", layout="wide", page_icon="📈")
 
-# Set your API Key here (or preferably in your environment variables / Streamlit secrets)
-# os.environ["GEMINI_API_KEY"] = "YOUR_API_KEY_HERE"
-API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
+# Fetch the API key from Streamlit Secrets
+API_KEY = st.secrets["GEMINI_API_KEY"]
 
-if API_KEY != "YOUR_API_KEY_HERE":
-    genai.configure(api_key=API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-else:
-    model = None
+# Configure the AI model
+genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 # ==========================================
 # 2. Data & System Prompt
