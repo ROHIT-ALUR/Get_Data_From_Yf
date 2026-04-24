@@ -49,12 +49,15 @@ ESG_DATA = [
 
 df = pd.DataFrame(ESG_DATA)
 
+# Make sure the f""" is intact at the beginning
 SYSTEM_PROMPT = f"""
 You are ESGAnalyst, an expert AI assistant specializing in ESG scoring and its correlation with financial performance of Indian listed firms. You are helping an MBA student at MSRUAS with their dissertation.
 Here is the data context you have access to: {df.to_json(orient='records')}
 
-Context: India-specific SEBI BRSR framework, NSE/BSE listed firms, Nifty 100 universe.
-Be concise (3-5 sentences), data-driven, cite specific firms when relevant, and connect ESG to financial implications."""
+Context: India-specific - SEBI BRSR framework, NSE/BSE listed firms, Nifty 100 universe.
+Be concise (3-5 sentences), data-driven, cite specific firms when relevant, and connect ESG to financial implications.
+"""
+# Make sure the """ is intact at the end
 
 # ==========================================
 # 3. Main Dashboard UI (Left Column)
