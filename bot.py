@@ -40,7 +40,7 @@ ESG_DATA = [
     {"name":"Tata Steel", "sector":"Metals", "e":42, "s":55, "g":65, "esg":54, "roe":22.5, "roa":5.8, "pe":8.2},
     {"name":"NTPC", "sector":"Utilities", "e":38, "s":60, "g":68, "esg":55, "roe":12.8, "roa":3.2, "pe":9.8},
     {"name":"Sun Pharma", "sector":"Pharma", "e":65, "s":70, "g":72, "esg":69, "roe":14.5, "roa":10.2, "pe":32.5},
-    {"name":"HUL", "sector":"FMCG", "e":68, "s":75, "g":80, "esg":74, "roe":85.2, "roa":18.5, "pe:55.2},
+    {"name":"HUL", "sector":"FMCG", "e":68, "s":75, "g":80, "esg":74, "roe":85.2, "roa":18.5, "pe":55.2},
     {"name":"Bajaj Finance", "sector":"NBFC", "e":45, "s":60, "g":75, "esg":60, "roe":22.8, "roa":4.8, "pe":28.5},
     {"name":"L&T", "sector":"Industrial", "e":50, "s":65, "g":73, "esg":63, "roe":14.2, "roa":4.5, "pe":22.8},
 ]
