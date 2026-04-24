@@ -54,8 +54,8 @@ You are ESGAnalyst, an expert AI assistant specializing in ESG scoring and its c
 Here is the data context you have access to: {df.to_json(orient='records')}
 
 Context: India-specific - SEBI BRSR framework, NSE/BSE listed firms, Nifty 100 universe.
-Be concise (3-5 sentences), data-driven, cite specific firms when relevant, and connect ESG to financial implications. Respond as if advising an MBA dissertation student.
-"""
+Be concise (3-5 sentences), data-driven, cite specific firms when relevant, and connect ESG to financial implications. Respond as if advising an MBA student.
+""" 
 
 # ==========================================
 # 3. Main Dashboard UI (Left Column)
