@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-
-"""
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -21,11 +18,12 @@ else:
 # Configure the AI model if the key exists
 if API_KEY:
     genai.configure(api_key=API_KEY)
-    # UPDATE: Using the latest available model here!
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    # Using the latest available model
+    model = genai.GenerativeModel('gemini-2.0-flash')
 else:
     model = None
     st.error("⚠️ API Key not found! Please check your Streamlit Cloud Secrets.")
+
 # ==========================================
 # 2. Data & System Prompt
 # ==========================================
@@ -55,7 +53,7 @@ Here is the data context you have access to: {df.to_json(orient='records')}
 
 Context: India-specific - SEBI BRSR framework, NSE/BSE listed firms, Nifty 100 universe.
 Be concise (3-5 sentences), data-driven, cite specific firms when relevant, and connect ESG to financial implications. Respond as if advising an MBA student.
-""" 
+"""
 
 # ==========================================
 # 3. Main Dashboard UI (Left Column)
@@ -159,4 +157,3 @@ with col2:
                     msg = "⚠️ **API Key Missing**: Please set your Gemini API key in the script to enable the AI."
                     st.markdown(msg)
                     st.session_state.messages.append({"role": "assistant", "content": msg})
-
