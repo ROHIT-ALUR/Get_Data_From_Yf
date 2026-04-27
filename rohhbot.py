@@ -1,4 +1,4 @@
-pip install streamlit yfinance plotly pandas numpy google-generativeai anthropic openai
+
 # -*- coding: utf-8 -*-
 """
 RohhBot Enhanced — Live Corporate & ESG Finance Dashboard
