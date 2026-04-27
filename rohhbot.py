@@ -13,7 +13,6 @@ from plotly.subplots import make_subplots
 import yfinance as yf
 import datetime
 import uuid
-from scipy import stats
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -580,8 +579,13 @@ with left:
             bm_vol    = daily_bm.std()  * np.sqrt(252) * 100
             sharpe    = (daily_ret.mean() * 252) / (daily_ret.std() * np.sqrt(252))
             max_dd    = (hist["Close"] / hist["Close"].cummax() - 1).min() * 100
-            slope, intercept, r_val, p_val, _ = stats.linregress(merged[benchmark_ticker], merged[target_ticker])
-            beta_calc = slope
+            x_arr = merged[benchmark_ticker].values
+            y_arr = merged[target_ticker].values
+            slope, intercept = np.polyfit(x_arr, y_arr, 1)
+            ss_res = np.sum((y_arr - (slope * x_arr + intercept)) ** 2)
+            ss_tot = np.sum((y_arr - np.mean(y_arr)) ** 2)
+            r_val  = np.sqrt(1 - ss_res / ss_tot) if ss_tot != 0 else 0
+            beta_calc  = slope
             alpha_calc = (intercept * 252) * 100
 
             r_kpi1, r_kpi2, r_kpi3, r_kpi4 = st.columns(4)
