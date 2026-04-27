@@ -715,34 +715,42 @@ with left:
             max_dd    = (_risk_src["Close"] / _risk_src["Close"].cummax() - 1).min() * 100
             x_arr = merged[benchmark_ticker].values
             y_arr = merged[target_ticker].values
-            slope, intercept = np.polyfit(x_arr, y_arr, 1)
-            ss_res = np.sum((y_arr - (slope * x_arr + intercept)) ** 2)
-            ss_tot = np.sum((y_arr - np.mean(y_arr)) ** 2)
-            r_val  = np.sqrt(1 - ss_res / ss_tot) if ss_tot != 0 else 0
-            beta_calc  = slope
-            alpha_calc = (intercept * 252) * 100
+            if len(x_arr) >= 30:
+                slope, intercept = np.polyfit(x_arr, y_arr, 1)
+                ss_res = np.sum((y_arr - (slope * x_arr + intercept)) ** 2)
+                ss_tot = np.sum((y_arr - np.mean(y_arr)) ** 2)
+                r_val      = np.sqrt(1 - ss_res / ss_tot) if ss_tot != 0 else 0
+                beta_calc  = slope
+                alpha_calc = (intercept * 252) * 100
+            else:
+                slope = intercept = r_val = beta_calc = alpha_calc = None
 
             r_kpi1, r_kpi2, r_kpi3, r_kpi4 = st.columns(4)
             r_kpi1.metric("Annualised Vol %", f"{vol_ann:.2f}")
             r_kpi2.metric("Sharpe Ratio",     f"{sharpe:.2f}")
             r_kpi3.metric("Max Drawdown %",   f"{max_dd:.2f}")
-            r_kpi4.metric("Beta (calc)",       f"{beta_calc:.3f}")
+            r_kpi4.metric("Beta (calc)",       f"{beta_calc:.3f}" if beta_calc is not None else "N/A")
 
             col_r1, col_r2 = st.columns(2)
             with col_r1:
-                # Scatter + OLS Regression
-                x_line = np.linspace(merged[benchmark_ticker].min(), merged[benchmark_ticker].max(), 100)
-                y_line = intercept + slope * x_line
                 fig_reg = go.Figure()
                 fig_reg.add_trace(go.Scatter(
                     x=merged[benchmark_ticker], y=merged[target_ticker],
                     mode="markers", name="Daily Returns",
                     marker=dict(color=ACCENT, opacity=0.5, size=5),
                 ))
-                fig_reg.add_trace(go.Scatter(
-                    x=x_line, y=y_line, mode="lines", name=f"OLS (β={beta_calc:.2f}, R²={r_val**2:.2f})",
-                    line=dict(color=RED, width=2.5),
-                ))
+                if slope is not None:
+                    x_line = np.linspace(merged[benchmark_ticker].min(), merged[benchmark_ticker].max(), 100)
+                    y_line = intercept + slope * x_line
+                    fig_reg.add_trace(go.Scatter(
+                        x=x_line, y=y_line, mode="lines",
+                        name=f"OLS (β={beta_calc:.2f}, R²={r_val**2:.2f})",
+                        line=dict(color=RED, width=2.5),
+                    ))
+                else:
+                    fig_reg.add_annotation(text="Not enough overlapping data for regression",
+                                           xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                                           font=dict(color="#6b7280", size=13))
                 fig_reg.update_layout(**DARK, title="OLS Regression — Stock vs Benchmark", height=380)
                 st.plotly_chart(fig_reg, use_container_width=True)
 
@@ -751,12 +759,18 @@ with left:
                 roll_cov  = daily_ret.rolling(60).cov(daily_bm)
                 roll_var  = daily_bm.rolling(60).var()
                 roll_beta = (roll_cov / roll_var).dropna()
-                fig_rbeta = go.Figure(go.Scatter(
-                    x=roll_beta.index, y=roll_beta.values,
-                    line=dict(color=ACCENT3, width=2), fill="tozeroy",
-                    fillcolor="rgba(247,195,83,.1)", name="Rolling 60-day Beta",
-                ))
-                fig_rbeta.add_hline(y=1, line_dash="dot", line_color=RED, annotation_text="Market Beta=1")
+                if not roll_beta.empty:
+                    fig_rbeta = go.Figure(go.Scatter(
+                        x=roll_beta.index, y=roll_beta.values,
+                        line=dict(color=ACCENT3, width=2), fill="tozeroy",
+                        fillcolor="rgba(247,195,83,.1)", name="Rolling 60-day Beta",
+                    ))
+                    fig_rbeta.add_hline(y=1, line_dash="dot", line_color=RED, annotation_text="Market Beta=1")
+                else:
+                    fig_rbeta = go.Figure()
+                    fig_rbeta.add_annotation(text="Insufficient data for rolling beta",
+                                             xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                                             font=dict(color="#6b7280", size=13))
                 fig_rbeta.update_layout(**DARK, title="Rolling 60-Day Beta", height=380)
                 st.plotly_chart(fig_rbeta, use_container_width=True)
 
