@@ -470,27 +470,41 @@ with left:
             "Profit Margin": (0, 50,  10),
         }
         st.markdown("### 🎯 Bullet Charts — Metric vs Sector Benchmark")
+        BULLET_LAYOUT = dict(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Outfit", color="#e8eaf0", size=12),
+            margin=dict(l=10, r=10, t=40, b=10),
+        )
         fig_bullet = go.Figure()
         for i, (metric, val) in enumerate(metrics_vals.items()):
-            if val is None: continue
+            if val is None:
+                continue
             lo, hi, target = BENCHMARKS[metric]
+            # Background bar (full range)
             fig_bullet.add_trace(go.Bar(
                 x=[hi * 0.75], y=[metric], orientation="h",
                 marker_color="rgba(30,35,48,0.9)", name="", showlegend=False,
                 width=0.5,
             ))
+            # Value bar
+            bar_color = ACCENT if val <= target else ACCENT3 if val <= hi * 1.2 else RED
             fig_bullet.add_trace(go.Bar(
-                x=[val if val <= hi else hi], y=[metric], orientation="h",
-                marker_color=ACCENT if val <= target else ACCENT3 if val <= hi * 1.2 else RED,
-                name="", showlegend=False, width=0.3,
+                x=[min(val, hi)], y=[metric], orientation="h",
+                marker_color=bar_color, name="", showlegend=False, width=0.3,
             ))
+            # Benchmark target line
             fig_bullet.add_shape(type="line",
                 x0=target, x1=target, y0=i - 0.35, y1=i + 0.35,
                 line=dict(color=RED, width=2, dash="dot"),
             )
-        fig_bullet.update_layout(**DARK, title="Bullet Chart — Value (bar) vs Benchmark (dotted line)",
-                                  height=420, barmode="overlay",
-                                  xaxis=dict(visible=False), yaxis=dict(autorange="reversed"))
+        fig_bullet.update_layout(
+            **BULLET_LAYOUT,
+            title="Bullet Chart — Value (bar) vs Benchmark (dotted line)",
+            height=420, barmode="overlay",
+            xaxis=dict(visible=False, gridcolor="#1e2330"),
+            yaxis=dict(autorange="reversed", gridcolor="#1e2330"),
+        )
         st.plotly_chart(fig_bullet, use_container_width=True)
 
         # ── Radar / Spider ───────────────────────────────────────────────
