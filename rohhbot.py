@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 """
 RohhBot Enhanced — Live Corporate & ESG Finance Dashboard
@@ -171,23 +170,84 @@ with st.sidebar:
     st.divider()
 
     st.markdown("## 🔎 Asset Search")
-    popular_tickers = [
-        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-        "WIPRO.NS", "AAPL", "MSFT", "GOOGL", "TSLA", "NVDA", "AMZN",
-    ]
-    selected_ticker = st.selectbox("Quick Select", ["Custom…"] + popular_tickers)
-    if selected_ticker == "Custom…":
-        target_ticker = st.text_input("Custom Ticker", "RELIANCE.NS").upper()
+    st.caption("Search any company listed on NSE (.NS), BSE (.BO), or global exchanges.")
+
+    # ── Live company name search ─────────────────────────────────────────────
+    search_query = st.text_input(
+        "🔍 Search by Company Name or Ticker",
+        placeholder="e.g. Tata Motors, HDFC, Infosys, AAPL…",
+    )
+
+    target_ticker = "RELIANCE.NS"   # sensible default
+
+    if search_query and len(search_query) >= 2:
+        with st.spinner("Searching…"):
+            try:
+                results = yf.Search(search_query, max_results=10)
+                quotes  = results.quotes if hasattr(results, "quotes") else []
+
+                # Filter for NSE / BSE / any exchange
+                if quotes:
+                    options = {}
+                    for q in quotes:
+                        sym  = q.get("symbol", "")
+                        name = q.get("longname") or q.get("shortname") or sym
+                        exch = q.get("exchange", "")
+                        label = f"{name}  [{sym}]  {exch}"
+                        options[label] = sym
+
+                    if options:
+                        chosen_label = st.selectbox(
+                            "Select Company", list(options.keys())
+                        )
+                        target_ticker = options[chosen_label]
+                        st.success(f"✅ Selected: **{target_ticker}**")
+                    else:
+                        st.warning("No results found. Try a different name or enter the ticker manually.")
+                        target_ticker = st.text_input("Enter Ticker Manually", "RELIANCE.NS").upper()
+                else:
+                    st.warning("No results. Enter the ticker directly below.")
+                    target_ticker = st.text_input("Enter Ticker Manually", "RELIANCE.NS").upper()
+            except Exception:
+                st.warning("Search unavailable. Enter the ticker directly.")
+                target_ticker = st.text_input("Enter Ticker Manually", "RELIANCE.NS").upper()
     else:
-        target_ticker = selected_ticker
+        st.markdown("**— or enter ticker directly —**")
+        col_t, col_x = st.columns([3, 1])
+        with col_t:
+            target_ticker = st.text_input(
+                "Ticker Symbol",
+                value="RELIANCE.NS",
+                help="NSE → append .NS  |  BSE → append .BO  |  Global → use as-is",
+            ).upper()
+        with col_x:
+            st.markdown(
+                "<div style='padding-top:28px;font-size:.72rem;color:#6b7280'>"
+                ".NS = NSE<br>.BO = BSE</div>",
+                unsafe_allow_html=True,
+            )
+
+        st.markdown(
+            "<div style='font-size:.72rem;color:#6b7280;margin-top:4px'>"
+            "Examples: <code>TCS.NS</code> &nbsp;·&nbsp; <code>TATAMOTORS.BO</code> "
+            "&nbsp;·&nbsp; <code>HDFCBANK.NS</code> &nbsp;·&nbsp; <code>NVDA</code>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
     # Benchmark
     benchmark_ticker = st.selectbox(
-        "Benchmark",
-        ["^NSEI", "^BSESN", "^GSPC", "^IXIC", "^DJI"],
+        "Benchmark Index",
+        ["^NSEI", "^BSESN", "^GSPC", "^IXIC", "^DJI", "^FTSE", "^N225"],
         index=0,
     )
-    hist_period = st.selectbox("History Window", ["3mo", "6mo", "1y", "2y", "5y"], index=2)
+
+    hist_period = st.selectbox(
+        "History Window",
+        ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "max"],
+        index=7,            # default = max (lifetime)
+        help="'max' fetches every available trading day since listing",
+    )
 
     st.divider()
     if st.button("🗑️ Clear Chat"):
@@ -204,9 +264,16 @@ def fetch_all_data(ticker, benchmark, period):
         bm   = yf.Ticker(benchmark)
         info = tk.info
 
+        # Validate ticker returned real data
+        if not info or info.get("trailingPegRatio") is None and info.get("symbol") is None and info.get("longName") is None:
+            # Try fetching history first to see if ticker is valid at all
+            test = tk.history(period="5d")
+            if test.empty:
+                return None, None, None, None
+
         # ── Financials ──────────────────────────────────────────────────────
         fin = {
-            "Name":          info.get("longName", ticker),
+            "Name":          info.get("longName") or info.get("shortName") or ticker,
             "Sector":        info.get("sector", "N/A"),
             "Industry":      info.get("industry", "N/A"),
             "Country":       info.get("country", "N/A"),
@@ -248,13 +315,43 @@ def fetch_all_data(ticker, benchmark, period):
         ]
         df_officers = pd.DataFrame(officers_list) if officers_list else pd.DataFrame()
 
-        # ── Historical prices ────────────────────────────────────────────────
-        hist    = tk.history(period=period)
-        bm_hist = bm.history(period=period)
+        # ── Historical prices ─────────────────────────────────────────────
+        # Use auto_adjust=True to get split/dividend adjusted prices
+        hist    = tk.history(period=period, auto_adjust=True)
+        bm_hist = bm.history(period=period, auto_adjust=True)
 
-        return fin, df_officers, hist, bm_hist
+        # Smart downsampling: for very long histories use weekly/monthly OHLCV
+        # to keep charts performant while preserving lifetime scope
+        def downsample(df, resample_rule):
+            if df.empty:
+                return df
+            agg = {
+                "Open":   "first",
+                "High":   "max",
+                "Low":    "min",
+                "Close":  "last",
+                "Volume": "sum",
+            }
+            existing = {k: v for k, v in agg.items() if k in df.columns}
+            return df.resample(resample_rule).agg(existing).dropna(subset=["Close"])
+
+        if len(hist) > 3000:          # > ~12 years of daily data → weekly
+            hist_chart = downsample(hist, "W")
+        elif len(hist) > 1000:        # > ~4 years → weekly
+            hist_chart = downsample(hist, "W")
+        else:
+            hist_chart = hist.copy()
+
+        if len(bm_hist) > 1000:
+            bm_chart = downsample(bm_hist, "W")
+        else:
+            bm_chart = bm_hist.copy()
+
+        # Attach chart-ready frames as extra attributes via a dict wrapper
+        return fin, df_officers, hist_chart, bm_chart, hist, bm_hist
+
     except Exception as e:
-        return None, None, None, None
+        return None, None, None, None, None, None
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 5.  CHART HELPERS  (dark theme defaults)
@@ -336,11 +433,24 @@ Be concise, data-driven and insightful. Use bullet points and markdown. Referenc
 # 7.  LOAD DATA
 # ══════════════════════════════════════════════════════════════════════════════
 with st.spinner(f"Loading live data for **{target_ticker}** vs **{benchmark_ticker}**…"):
-    fin_data, df_officers, hist, bm_hist = fetch_all_data(target_ticker, benchmark_ticker, hist_period)
+    result = fetch_all_data(target_ticker, benchmark_ticker, hist_period)
 
-if fin_data is None:
-    st.error(f"❌ Could not fetch data for `{target_ticker}`. Check the ticker symbol.")
+if result[0] is None:
+    st.error(
+        f"❌ Could not fetch data for `{target_ticker}`. "
+        "Please check the ticker symbol. For NSE stocks add `.NS` (e.g. `RELIANCE.NS`), "
+        "for BSE add `.BO` (e.g. `RELIANCE.BO`)."
+    )
     st.stop()
+
+fin_data, df_officers, hist, bm_hist, hist_full, bm_full = result
+
+# Show data range info
+if hist is not None and not hist.empty:
+    date_from = hist.index.min().strftime("%d %b %Y")
+    date_to   = hist.index.max().strftime("%d %b %Y")
+    total_days = len(hist_full) if hist_full is not None else len(hist)
+    st.sidebar.success(f"📅 Data: **{date_from}** → **{date_to}** ({total_days:,} trading days)")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 8.  MAIN LAYOUT
@@ -408,19 +518,25 @@ with left:
                 st.plotly_chart(fig_price, use_container_width=True)
 
             with col_b:
-                # Monthly return comparison
-                monthly_close = hist["Close"].resample("ME").last()
+                # Monthly return comparison — use full daily data for accuracy
+                _daily_src    = hist_full if hist_full is not None and not hist_full.empty else hist
+                monthly_close = _daily_src["Close"].resample("ME").last()
                 monthly_ret   = monthly_close.pct_change().dropna() * 100
-                colors        = [ACCENT if r >= 0 else RED for r in monthly_ret]
+                # For very long histories show only last 5 years in bar chart
+                if len(monthly_ret) > 60:
+                    monthly_ret_display = monthly_ret.iloc[-60:]
+                else:
+                    monthly_ret_display = monthly_ret
+                colors        = [ACCENT if r >= 0 else RED for r in monthly_ret_display]
                 fig_monthly   = go.Figure(go.Bar(
-                    x=monthly_ret.index.strftime("%b %Y"), y=monthly_ret.values,
+                    x=monthly_ret_display.index.strftime("%b %Y"), y=monthly_ret_display.values,
                     marker_color=colors, name="Monthly Return %",
                 ))
-                fig_monthly.update_layout(**DARK, title="Monthly Returns (%)", height=350,
+                fig_monthly.update_layout(**DARK, title="Monthly Returns — Last 5 Years (%)", height=350,
                                           xaxis_tickangle=-45)
                 st.plotly_chart(fig_monthly, use_container_width=True)
 
-            # Cumulative return vs benchmark
+            # Cumulative return vs benchmark (use downsampled chart data for speed)
             ret_stock = hist["Close"].pct_change().dropna()
             cum_stock = (1 + ret_stock).cumprod() - 1
 
@@ -583,17 +699,20 @@ with left:
     # TAB 4 — Risk & Regression
     # ════════════════════════════════════════════════════════════════════════
     with tabs[3]:
-        if hist is not None and not hist.empty and bm_hist is not None and not bm_hist.empty:
-            daily_ret  = hist["Close"].pct_change().dropna()
-            daily_bm   = bm_hist["Close"].pct_change().dropna()
+        # Use full daily data for accurate risk stats
+        _risk_src    = hist_full if hist_full is not None and not hist_full.empty else hist
+        _risk_bm_src = bm_full   if bm_full   is not None and not bm_full.empty   else bm_hist
+        if _risk_src is not None and not _risk_src.empty and _risk_bm_src is not None and not _risk_bm_src.empty:
+            daily_ret  = _risk_src["Close"].pct_change().dropna()
+            daily_bm   = _risk_bm_src["Close"].pct_change().dropna()
             merged     = pd.concat([daily_ret, daily_bm], axis=1, join="inner")
             merged.columns = [target_ticker, benchmark_ticker]
 
-            # Risk stats
+            # Risk stats (all computed on full daily history)
             vol_ann   = daily_ret.std() * np.sqrt(252) * 100
             bm_vol    = daily_bm.std()  * np.sqrt(252) * 100
             sharpe    = (daily_ret.mean() * 252) / (daily_ret.std() * np.sqrt(252))
-            max_dd    = (hist["Close"] / hist["Close"].cummax() - 1).min() * 100
+            max_dd    = (_risk_src["Close"] / _risk_src["Close"].cummax() - 1).min() * 100
             x_arr = merged[benchmark_ticker].values
             y_arr = merged[target_ticker].values
             slope, intercept = np.polyfit(x_arr, y_arr, 1)
@@ -650,7 +769,7 @@ with left:
             fig_dist.update_layout(**DARK, title="Daily Return Distribution (%)", barmode="overlay", height=280)
             st.plotly_chart(fig_dist, use_container_width=True)
 
-            # Drawdown
+            # Drawdown (use chart-friendly downsampled data for rendering)
             drawdown_series = (hist["Close"] / hist["Close"].cummax() - 1) * 100
             fig_dd = go.Figure(go.Scatter(
                 x=drawdown_series.index, y=drawdown_series.values,
